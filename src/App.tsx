@@ -73,11 +73,11 @@ function App() {
           {
             role: "system",
             content:
-              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility.",
+              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility, remove connectors int the responses and signs, maximum 60 characters.",
           },
           {
             role: "user",
-            content: `Generate three titles for a product with the following keywords: ${values}. In Spanish`,
+            content: `Generate four titles for a product with the following keywords: ${values}. In Spanish`,
           },
         ],
       });
