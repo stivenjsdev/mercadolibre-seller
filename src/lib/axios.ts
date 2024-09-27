@@ -1,15 +1,12 @@
 import axios from "axios";
 
 const apiMLSuggest = axios.create({
-  baseURL: import.meta.env.VITE_SUGGEST_BASE_URL,
+  baseURL: "https://http2.mlstatic.com/",
 });
 
-// apiMLSuggest.interceptors.request.use((config) => {
-//   const token = localStorage.getItem("AUTH_TOKEN"); // cambiar por el correcto
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
+const apiML = axios.create({
+  baseURL: "https://api.mercadolibre.com/",
+});
 
-export default apiMLSuggest;
+export { apiML, apiMLSuggest };
+

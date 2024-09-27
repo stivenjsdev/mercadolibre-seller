@@ -1,4 +1,4 @@
-import { getSuggestions } from "@/api/MLSuggestAPI";
+import { getSuggestions } from "@/api/mLSuggestAPI";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,11 +17,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { SuggestionsResponse } from "@/types";
+import { SearchResponse, SuggestionsResponse } from "@/types";
 import { useMutation } from "@tanstack/react-query";
 import { OpenAI } from "openai";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { searchTerm } from "./api/mLAPI";
 
 type FormData = {
   message: string;
@@ -32,7 +33,7 @@ function App() {
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "success"
   );
-  const { data, mutate } = useMutation({
+  const { data: dataSuggestions, mutate: mutateSuggestions } = useMutation({
     mutationFn: getSuggestions,
     onError: (error) => {
       console.error("Error:", error);
@@ -40,8 +41,21 @@ function App() {
     onSuccess: (data) => {
       console.log("getSuggestions Success");
       if (!data) return;
-      console.log("asking gpt");
-      askGpt(data);
+      // console.log("asking gpt");
+      // askGpt(data);
+    },
+  });
+
+  const { data: dataSearch, mutate: mutateSearch } = useMutation({
+    mutationFn: searchTerm,
+    onError: (error) => {
+      console.error("Error:", error);
+    },
+    onSuccess: (data) => {
+      console.log("getSearch Success");
+      if (!data) return;
+      // console.log("asking gpt");
+      // askGpt(data);
     },
   });
 
@@ -52,17 +66,20 @@ function App() {
   });
 
   async function onSubmitSuggestions(formData: FormData) {
-    mutate(formData.message);
+    mutateSuggestions(formData.message);
+    mutateSearch(formData.message);
     form.reset();
   }
 
-  async function askGpt(data: SuggestionsResponse) {
-    if (!data) return;
+  async function askGpt(dataSuggestion: SuggestionsResponse, dataSearch: SearchResponse) {
+    if (!dataSuggestions && !dataSearch) return;
 
     setStatus("loading");
 
     try {
-      const values = data.suggested_queries.map((item) => item.q).join(", ");
+      const examples = dataSearch.results.map((item) => item.title).join(", ");
+      console.log({examples});
+      const values = dataSuggestion.suggested_queries.map((item) => item.q).join(", ");
       const openai = new OpenAI({
         dangerouslyAllowBrowser: true,
         apiKey: import.meta.env.VITE_OPENAI_API_KEY,
@@ -73,11 +90,11 @@ function App() {
           {
             role: "system",
             content:
-              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility.",
+              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility. These are some examples of product titles that you have created for a client: " + examples + ". Include in the titles all possible words from both the examples and the keywords",
           },
           {
             role: "user",
-            content: `Genera 6 títulos de productos únicos, sin utilizar signos de puntuación, dos puntos, conectores, conjunciones, preposiciones, tildes y guiones ni caracteres especiales. Para cada título, selecciona palabras de una lista de palabras clave y utiliza todas las palabras claves y sus sinónimos que tengan sentido. Cada título debe ser claro, atractivo, y reflejar la idea de un producto real. Cada título debe tener entre 50 y 60 caracteres. la lista de palabras claves es la siguiente: ${values}`,
+            content: `Genera 6 títulos de productos únicos, sin utilizar signos de puntuación, dos puntos, conectores, conjunciones, preposiciones, tildes y guiones ni caracteres especiales. Para cada título, selecciona palabras de una lista de palabras clave y utiliza todas las palabras claves y sus sinónimos que tengan sentido. Cada título debe ser claro, atractivo, y reflejar la idea de un producto real. la lista de palabras claves es la siguiente: ${values}`,
           },
         ],
       });
@@ -91,12 +108,17 @@ function App() {
     }
   }
 
+  const handleSuggestTitles = () => {
+    if (dataSuggestions && dataSearch) askGpt(dataSuggestions, dataSearch);
+  };
+
   return (
     <main className="p-4">
       <h1 className="text-2xl text-center py-2 font-bold">
         MercadoLibre Sellers
       </h1>
       <div className="w-full max-w-md mx-auto space-y-4">
+        {/* term form */}
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmitSuggestions)}
@@ -122,25 +144,48 @@ function App() {
           </form>
         </Form>
 
+        {/* suggestions card */}
         <Card>
           <CardHeader>
             <CardTitle>Suggestions</CardTitle>
             <CardDescription>This is your suggestions</CardDescription>
           </CardHeader>
           <CardContent>
-            {data &&
-              data.suggested_queries.map((suggested_query, index) => (
-                <p key={index}>{suggested_query.q}</p>
+            {dataSuggestions &&
+              dataSuggestions.suggested_queries.map(
+                (suggested_query, index) => (
+                  <p key={index}>{suggested_query.q}</p>
+                )
+              )}
+          </CardContent>
+        </Card>
+
+        {/* Searches card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Searches</CardTitle>
+            <CardDescription>This is your searches</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {dataSearch &&
+              dataSearch.results.map((result) => (
+                <p key={result.id} className="py-2">
+                  {result.title} <span className="text-xs">({result.title.length} characters)</span>
+                </p>
               ))}
           </CardContent>
         </Card>
 
+        {/* suggested product title card */}
         <Card>
           <CardHeader>
             <CardTitle>Suggested Product Title</CardTitle>
             <CardDescription>
               This is your suggested product title
             </CardDescription>
+            <Button type="button" onClick={handleSuggestTitles}>
+              Suggest Titles
+            </Button>
           </CardHeader>
           <CardContent>
             {status === "loading" && <p>Loading...</p>}
