@@ -1,3 +1,5 @@
+import { searchTerm } from "@/api/mercadolibreAPI";
+import { getSuggestions } from "@/api/mercadolibreStaticAPI";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,8 +23,6 @@ import { useMutation } from "@tanstack/react-query";
 import { OpenAI } from "openai";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { searchTerm } from "./api/mLAPI";
-import { getSuggestions } from "./api/mLSuggestAPI";
 
 type FormData = {
   message: string;
