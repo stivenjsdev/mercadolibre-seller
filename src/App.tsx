@@ -29,10 +29,15 @@ type FormData = {
 };
 
 function App() {
+  // Response for the gpt request
   const [response, setResponse] = useState<string | null>("");
+
+  // Status for the gpt request
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "success"
   );
+
+  // Get Suggestions by term Query
   const { data: dataSuggestions, mutate: mutateSuggestions } = useMutation({
     mutationFn: getSuggestions,
     onError: (error) => {
@@ -41,11 +46,11 @@ function App() {
     onSuccess: (data) => {
       console.log("getSuggestions Success");
       if (!data) return;
-      // console.log("asking gpt");
-      // askGpt(data);
+      // doing something when get suggestions
     },
   });
 
+  // Get Product Searches by term Query 
   const { data: dataSearch, mutate: mutateSearch } = useMutation({
     mutationFn: searchTerm,
     onError: (error) => {
@@ -54,8 +59,7 @@ function App() {
     onSuccess: (data) => {
       console.log("getSearch Success");
       if (!data) return;
-      // console.log("asking gpt");
-      // askGpt(data);
+      // doing something when get searches
     },
   });
 
@@ -65,7 +69,7 @@ function App() {
     },
   });
 
-  async function onSubmitSuggestions(formData: FormData) {
+  async function onSubmit(formData: FormData) {
     mutateSuggestions(formData.message);
     mutateSearch(formData.message);
     form.reset();
@@ -114,14 +118,16 @@ function App() {
 
   return (
     <main className="p-4">
+      {/* Title */}
       <h1 className="text-2xl text-center py-2 font-bold">
-        MercadoLibre Sellers
+        Vendedores Mercadolibre
+        <span className="text-xs block font-light">Generador de títulos de productos</span>
       </h1>
       <div className="w-full max-w-md mx-auto space-y-4">
         {/* term form */}
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmitSuggestions)}
+            onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-8"
           >
             <FormField
@@ -129,26 +135,26 @@ function App() {
               name="message"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Search Term</FormLabel>
+                  <FormLabel>Termino de Búsqueda</FormLabel>
                   <FormControl>
-                    <Input placeholder="search term..." {...field} />
+                    <Input placeholder="Que deseas buscar?..." {...field} />
                   </FormControl>
                   <FormDescription>
-                    This is your search term to search products in ML.
+                    Este es tu termino de búsqueda para buscar productos en ML.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit">Submit</Button>
+            <Button type="submit">Consultar</Button>
           </form>
         </Form>
 
         {/* suggestions card */}
         <Card>
           <CardHeader>
-            <CardTitle>Suggestions</CardTitle>
-            <CardDescription>This is your suggestions</CardDescription>
+            <CardTitle>Sugerencias</CardTitle>
+            <CardDescription>Estas son las sugerencias de búsqueda generadas por ML.</CardDescription>
           </CardHeader>
           <CardContent>
             {dataSuggestions &&
@@ -163,8 +169,8 @@ function App() {
         {/* Searches card */}
         <Card>
           <CardHeader>
-            <CardTitle>Searches</CardTitle>
-            <CardDescription>This is your searches</CardDescription>
+            <CardTitle>Búsquedas</CardTitle>
+            <CardDescription>Estos son los títulos de los productos encontrados en ML.</CardDescription>
           </CardHeader>
           <CardContent>
             {dataSearch &&
@@ -179,12 +185,13 @@ function App() {
         {/* suggested product title card */}
         <Card>
           <CardHeader>
-            <CardTitle>Suggested Product Title</CardTitle>
+            <CardTitle>Titulo de Producto Sugerido</CardTitle>
             <CardDescription>
-              This is your suggested product title
+              Estas son las sugerencias generadas por IA para los títulos de los productos en ML.
             </CardDescription>
-            <Button type="button" onClick={handleSuggestTitles}>
-              Suggest Titles
+            {/* Button Suggest Titles */}
+            <Button type="button" onClick={handleSuggestTitles} disabled={!dataSuggestions && !dataSearch}>
+              Sugerir Títulos
             </Button>
           </CardHeader>
           <CardContent>
