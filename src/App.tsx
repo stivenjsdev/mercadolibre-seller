@@ -1,4 +1,3 @@
-import { getSuggestions } from "@/api/mLSuggestAPI";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,6 +22,7 @@ import { OpenAI } from "openai";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { searchTerm } from "./api/mLAPI";
+import { getSuggestions } from "./api/mLSuggestAPI";
 
 type FormData = {
   message: string;
