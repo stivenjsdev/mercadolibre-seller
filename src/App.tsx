@@ -50,7 +50,7 @@ function App() {
     },
   });
 
-  // Get Product Searches by term Query 
+  // Get Product Searches by term Query
   const { data: dataSearch, mutate: mutateSearch } = useMutation({
     mutationFn: searchTerm,
     onError: (error) => {
@@ -75,15 +75,20 @@ function App() {
     form.reset();
   }
 
-  async function askGpt(dataSuggestion: SuggestionsResponse, dataSearch: SearchResponse) {
+  async function askGpt(
+    dataSuggestion: SuggestionsResponse,
+    dataSearch: SearchResponse
+  ) {
     if (!dataSuggestions && !dataSearch) return;
 
     setStatus("loading");
 
     try {
       const examples = dataSearch.results.map((item) => item.title).join(", ");
-      console.log({examples});
-      const values = dataSuggestion.suggested_queries.map((item) => item.q).join(", ");
+      console.log({ examples });
+      const values = dataSuggestion.suggested_queries
+        .map((item) => item.q)
+        .join(", ");
       const openai = new OpenAI({
         dangerouslyAllowBrowser: true,
         apiKey: import.meta.env.VITE_OPENAI_API_KEY,
@@ -94,7 +99,9 @@ function App() {
           {
             role: "system",
             content:
-              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility. These are some examples of product titles that you have created for a client: " + examples + ". Include in the titles all possible words from both the examples and the keywords",
+              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility. These are some examples of product titles that you have created for a client: " +
+              examples +
+              ". Include in the titles all possible words from both the examples and the keywords",
           },
           {
             role: "user",
@@ -121,14 +128,16 @@ function App() {
       {/* Title */}
       <h1 className="text-2xl text-center py-2 font-bold">
         Vendedores Mercadolibre
-        <span className="text-xs block font-light">Generador de títulos de productos</span>
+        <span className="text-xs block font-light">
+          Generador de títulos de productos
+        </span>
       </h1>
       <div className="w-full max-w-md mx-auto space-y-4">
         {/* term form */}
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-8"
+            className="space-y-5 pb-2"
           >
             <FormField
               control={form.control}
@@ -146,7 +155,9 @@ function App() {
                 </FormItem>
               )}
             />
-            <Button type="submit">Consultar</Button>
+            <Button type="submit" className="uppercase">
+              Consultar
+            </Button>
           </form>
         </Form>
 
@@ -154,7 +165,9 @@ function App() {
         <Card>
           <CardHeader>
             <CardTitle>Sugerencias</CardTitle>
-            <CardDescription>Estas son las sugerencias de búsqueda generadas por ML.</CardDescription>
+            <CardDescription>
+              Estas son las sugerencias de búsqueda generadas por ML.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {dataSuggestions &&
@@ -170,13 +183,18 @@ function App() {
         <Card>
           <CardHeader>
             <CardTitle>Búsquedas</CardTitle>
-            <CardDescription>Estos son los títulos de los productos encontrados en ML.</CardDescription>
+            <CardDescription>
+              Estos son los títulos de los productos encontrados en ML.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {dataSearch &&
               dataSearch.results.map((result) => (
                 <p key={result.id} className="py-2">
-                  {result.title} <span className="text-xs">({result.title.length} characters)</span>
+                  {result.title}{" "}
+                  <span className="text-xs">
+                    ({result.title.length} characters)
+                  </span>
                 </p>
               ))}
           </CardContent>
@@ -187,10 +205,16 @@ function App() {
           <CardHeader>
             <CardTitle>Titulo de Producto Sugerido</CardTitle>
             <CardDescription>
-              Estas son las sugerencias generadas por IA para los títulos de los productos en ML.
+              Estas son las sugerencias generadas por IA para los títulos de los
+              productos en ML.
             </CardDescription>
             {/* Button Suggest Titles */}
-            <Button type="button" onClick={handleSuggestTitles} disabled={!dataSuggestions && !dataSearch}>
+            <Button
+              className="uppercase"
+              type="button"
+              onClick={handleSuggestTitles}
+              disabled={!dataSuggestions && !dataSearch}
+            >
               Sugerir Títulos
             </Button>
           </CardHeader>
