@@ -68,16 +68,16 @@ function App() {
         apiKey: import.meta.env.VITE_OPENAI_API_KEY,
       });
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-3.5-turbo", // gpt-4o-mini
         messages: [
           {
             role: "system",
             content:
-              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility, remove connectors int the responses and signs, maximum 60 characters.",
+              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility.",
           },
           {
             role: "user",
-            content: `Generate four titles for a product with the following keywords: ${values}. In Spanish`,
+            content: `Genera 6 títulos de productos únicos, sin utilizar signos de puntuación, dos puntos, conectores, conjunciones, preposiciones, tildes y guiones ni caracteres especiales. Para cada título, selecciona palabras de una lista de palabras clave y utiliza todas las palabras claves y sus sinónimos que tengan sentido. Cada título debe ser claro, atractivo, y reflejar la idea de un producto real. Cada título debe tener entre 50 y 60 caracteres. la lista de palabras claves es la siguiente: ${values}`,
           },
         ],
       });
@@ -145,7 +145,17 @@ function App() {
           <CardContent>
             {status === "loading" && <p>Loading...</p>}
             {status === "error" && <p>Error...</p>}
-            {status === "success" && <p>{response}</p>}
+            {status === "success" &&
+              response &&
+              response.split("\n").map((title, index) => {
+                if (title)
+                  return (
+                    <div className="p-3" key={index}>
+                      <p>{title.trim()} </p>
+                      <p className="text-xs">({title.length} characters)</p>
+                    </div>
+                  );
+              })}
           </CardContent>
         </Card>
       </div>
