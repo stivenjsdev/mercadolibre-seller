@@ -127,7 +127,7 @@ function App() {
     <main className="p-4">
       {/* Title */}
       <h1 className="text-2xl text-center py-2 font-bold">
-        Vendedores Mercadolibre
+        Vendedores Mercadolibre Pro
         <span className="text-xs block font-light">
           Generador de títulos de productos
         </span>
