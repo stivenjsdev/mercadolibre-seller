@@ -99,13 +99,11 @@ function App() {
           {
             role: "system",
             content:
-              "You are an expert copywriter specializing in creating catchy and effective product titles for e-commerce platforms. Your goal is to generate concise, engaging, and keyword-rich titles that attract potential buyers and improve search engine visibility. These are some examples of product titles that you have created for a client: " +
-              examples +
-              ". Include in the titles all possible words from both the examples and the keywords",
+              "Eres un experto generador de listas de títulos para productos destinados a plataformas de e-commerce como eBay, Amazon y MercadoLibre. Sigue las siguientes pautas: 1. Usa la mayor cantidad posible de palabras clave proporcionadas por el usuario. 2. Los títulos deben ser concisos, atractivos y optimizados para mejorar la visibilidad en motores de búsqueda (SEO). 3. No incluyas signos de puntuación, conectores, conjunciones, preposiciones, tildes, guiones ni caracteres especiales. 4. Los títulos deben estar formados por 8 a 12 palabras clave relevantes, utilizando sinónimos cuando sea necesario. 5. Cada título debe estar separado por un salto de línea obligatorio. 6. El último titulo debe ser una combinación de todos los títulos generados sin limite de palabras",
           },
           {
             role: "user",
-            content: `Genera 6 títulos de productos únicos, sin utilizar signos de puntuación, dos puntos, conectores, conjunciones, preposiciones, tildes y guiones ni caracteres especiales. Para cada título, selecciona palabras de una lista de palabras clave y utiliza todas las palabras claves y sus sinónimos que tengan sentido. Cada título debe ser claro, atractivo, y reflejar la idea de un producto real. la lista de palabras claves es la siguiente: ${values}`,
+            content: `10 títulos, palabras claves: ${values}. Ejemplos de títulos de ese producto o similares: ${examples}`,
           },
         ],
       });
@@ -193,7 +191,7 @@ function App() {
                 <p key={result.id} className="py-2">
                   {result.title}{" "}
                   <span className="text-xs">
-                    ({result.title.length} characters)
+                    ({result.title.length} caracteres)
                   </span>
                 </p>
               ))}
@@ -215,7 +213,7 @@ function App() {
               onClick={handleSuggestTitles}
               disabled={!dataSuggestions && !dataSearch}
             >
-              Sugerir Títulos
+              Generar Sugerencias de Títulos
             </Button>
           </CardHeader>
           <CardContent>
@@ -228,7 +226,7 @@ function App() {
                   return (
                     <div className="p-3" key={index}>
                       <p>{title.trim()} </p>
-                      <p className="text-xs">({title.length} characters)</p>
+                      <p className="text-xs">({title.length} caracteres)</p>
                     </div>
                   );
               })}
