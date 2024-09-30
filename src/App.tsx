@@ -22,20 +22,39 @@ import { SearchResponse, SuggestionsResponse } from "@/types";
 import { useMutation } from "@tanstack/react-query";
 import { OpenAI } from "openai";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { SubmitHandler, useForm } from "react-hook-form";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type FormData = {
   message: string;
+};
+
+type DescriptionFormData = {
+  url: string;
 };
 
 function App() {
   // Response for the gpt request
   const [response, setResponse] = useState<string | null>("");
 
+  // Description Response for the gpt request
+  const [descriptionResponse, setDescriptionResponse] = useState<string | null>(
+    ""
+  );
+
   // Status for the gpt request
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "success"
   );
+
+  // Status for the description gpt request
+  const [descriptionStatus, setDescriptionStatus] = useState<
+    "loading" | "success" | "error"
+  >("success");
+
+  // Image URL
+  const [url, setUrl] = useState("")
 
   // Get Suggestions by term Query
   const { data: dataSuggestions, mutate: mutateSuggestions } = useMutation({
@@ -69,11 +88,61 @@ function App() {
     },
   });
 
+  const descriptionForm = useForm<DescriptionFormData>({
+    defaultValues: {
+      url: "",
+    },
+  });
+
   async function onSubmit(formData: FormData) {
     mutateSuggestions(formData.message);
     mutateSearch(formData.message);
     form.reset();
   }
+
+  const handleGenerateDescription: SubmitHandler<DescriptionFormData> = async (
+    data
+  ) => {
+    if (!data.url) return;
+    console.log("generating description...");
+    setDescriptionStatus("loading");
+
+    try {
+      setUrl(data.url)
+
+      const openai = new OpenAI({
+        dangerouslyAllowBrowser: true,
+        apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Genera una descripción para el siguiente producto, para ser utilizada en plataformas de e-commerce como eBay, Amazon y MercadoLibre",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: data.url,
+                },
+              },
+            ],
+          },
+        ],
+      });
+      console.log(completion.choices[0]);
+      setDescriptionResponse(completion.choices[0].message.content);
+      setDescriptionStatus("success");
+    } catch (error) {
+      console.log(error);
+      setDescriptionStatus("error");
+    }
+  };
 
   async function askGpt(
     dataSuggestion: SuggestionsResponse,
@@ -99,7 +168,7 @@ function App() {
           {
             role: "system",
             content:
-              "Eres un experto generador de listas de títulos para productos destinados a plataformas de e-commerce como eBay, Amazon y MercadoLibre. Sigue las siguientes pautas: 1. Usa la mayor cantidad posible de palabras clave proporcionadas por el usuario. 2. Los títulos deben ser concisos, atractivos y optimizados para mejorar la visibilidad en motores de búsqueda (SEO). 3. No incluyas signos de puntuación, conectores, conjunciones, preposiciones, tildes, guiones ni caracteres especiales. 4. Los títulos deben estar formados por 8 a 12 palabras clave relevantes, utilizando sinónimos cuando sea necesario. 5. Cada título debe estar separado por un salto de línea obligatorio. 6. El último titulo debe ser una combinación de todos los títulos generados sin limite de palabras",
+              "Eres un experto generador de listas de títulos para productos destinados a plataformas de e-commerce como eBay, Amazon y MercadoLibre. Sigue las siguientes pautas: 1. Usa la mayor cantidad posible de palabras clave proporcionadas por el usuario. 2. Los títulos deben ser concisos, atractivos y optimizados para mejorar la visibilidad en motores de búsqueda (SEO). 3. No incluyas signos de puntuación, conectores, conjunciones, preposiciones, tildes, guiones ni caracteres especiales. 4. Los títulos deben estar formados por 8 a 12 palabras clave relevantes, utilizando sinónimos cuando sea necesario. 5. Cada título debe estar separado por un salto de línea obligatorio. 6. El último titulo debe ser obligatoriamente una combinación de todos los títulos generados sin limite de palabras",
           },
           {
             role: "user",
@@ -211,13 +280,13 @@ function App() {
               className="uppercase"
               type="button"
               onClick={handleSuggestTitles}
-              disabled={!dataSuggestions && !dataSearch}
+              // disabled={!dataSuggestions && !dataSearch}
             >
               Generar Sugerencias de Títulos
             </Button>
           </CardHeader>
           <CardContent>
-            {status === "loading" && <p>Loading...</p>}
+            {status === "loading" && <p>Cargando...</p>}
             {status === "error" && <p>Error...</p>}
             {status === "success" &&
               response &&
@@ -230,6 +299,61 @@ function App() {
                     </div>
                   );
               })}
+          </CardContent>
+        </Card>
+
+        {/* Generate Description Form */}
+        <Form {...descriptionForm}>
+          <form
+            onSubmit={descriptionForm.handleSubmit(handleGenerateDescription)}
+            className="space-y-5 pb-2"
+          >
+            <FormField
+              control={descriptionForm.control}
+              name="url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL imagen del Producto</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="URL imagen del producto..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Genera una descripción para el producto.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="uppercase">
+              Generar Descripción
+            </Button>
+          </form>
+        </Form>
+
+        {/* Image */}
+        <div className="flex justify-center">
+          {url && <img src={url} alt="product" className="w-1/3" />}
+        </div>
+
+        {/* Generate Description card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Descripción de Producto Generada</CardTitle>
+            <CardDescription>
+              Esta es la descripción generada por IA para el producto.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {descriptionStatus === "loading" && <p>Cargando...</p>}
+            {descriptionStatus === "error" && <p>Error...</p>}
+            {descriptionStatus === "success" && descriptionResponse && (
+              <Markdown remarkPlugins={[remarkGfm]} className="space-y-4">
+                {descriptionResponse}
+              </Markdown>
+            )}
           </CardContent>
         </Card>
       </div>
