@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SearchResponse, SuggestionsResponse } from "@/types";
+import { ImageFormData, TermFormData } from "@/types";
+import { gptQuery } from "@/utils/gptQuery";
 import { useMutation } from "@tanstack/react-query";
 import { OpenAI } from "openai";
 import { useState } from "react";
@@ -27,35 +28,32 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-type FormData = {
-  message: string;
-};
-
-type DescriptionFormData = {
-  url: string;
-};
-
 function App() {
   // Response for the gpt request
-  const [response, setResponse] = useState<string | null>("");
+  const [response, setResponse] = useState<string | null | undefined>("");
 
-  // Description Response for the gpt request
-  const [descriptionResponse, setDescriptionResponse] = useState<string | null>(
-    ""
-  );
+  // Image Description Response for the gpt request
+  const [imageDescriptionResponse, setImageDescriptionResponse] = useState<
+    string | null | undefined
+  >("");
+
+  // Image Keywords Response for the gpt request
+  const [imageKeywordsResponse, setImageKeywordsResponse] = useState<
+    string | null | undefined
+  >("");
+
+  // Image URL to display
+  const [url, setUrl] = useState("");
 
   // Status for the gpt request
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "success"
   );
 
-  // Status for the description gpt request
-  const [descriptionStatus, setDescriptionStatus] = useState<
+  // Status for the image gpt request
+  const [imageStatus, setImageStatus] = useState<
     "loading" | "success" | "error"
   >("success");
-
-  // Image URL
-  const [url, setUrl] = useState("");
 
   // Get Suggestions by term Query
   const { data: dataSuggestions, mutate: mutateSuggestions } = useMutation({
@@ -83,88 +81,36 @@ function App() {
     },
   });
 
-  const form = useForm<FormData>({
+  // Term Form
+  const form = useForm<TermFormData>({
     defaultValues: {
       message: "",
     },
   });
 
-  const descriptionForm = useForm<DescriptionFormData>({
+  // Image Form
+  const imageForm = useForm<ImageFormData>({
     defaultValues: {
       url: "",
     },
   });
 
-  async function onSubmit(formData: FormData) {
-    if (!formData.message) return;
-    mutateSuggestions(formData.message);
-    mutateSearch(formData.message);
-    form.reset();
-  }
-
-  const handleGenerateDescription: SubmitHandler<DescriptionFormData> = async (
-    data
-  ) => {
-    if (!data.url) return;
-    console.log("generating description...");
-    setDescriptionStatus("loading");
-
-    try {
-      setUrl(data.url);
-
-      const openai = new OpenAI({
-        dangerouslyAllowBrowser: true,
-        apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-      });
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Genera una descripción para el siguiente producto, para ser utilizada en plataformas de e-commerce como eBay, Amazon y MercadoLibre",
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: data.url,
-                },
-              },
-            ],
-          },
-        ],
-      });
-      console.log(completion.choices[0]);
-      setDescriptionResponse(completion.choices[0].message.content);
-      setDescriptionStatus("success");
-    } catch (error) {
-      console.log(error);
-      setDescriptionStatus("error");
-    }
-  };
-
-  async function askGpt(
-    dataSuggestion: SuggestionsResponse,
-    dataSearch: SearchResponse
-  ) {
+  // Suggest Titles Handler
+  const handleSuggestTitles = async () => {
     if (!dataSuggestions && !dataSearch) return;
-
     setStatus("loading");
 
-    try {
-      const examples = dataSearch.results.map((item) => item.title).join(", ");
-      console.log({ examples });
-      const values = dataSuggestion.suggested_queries
-        .map((item) => item.q)
-        .join(", ");
-      const openai = new OpenAI({
-        dangerouslyAllowBrowser: true,
-        apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-      });
-      const completion = await openai.chat.completions.create({
+    // Map products founded titles in string
+    const examples = dataSearch?.results.map((item) => item.title).join(", "); // todo: remove repeated titles
+
+    // Map suggested queries in string
+    const values = dataSuggestions?.suggested_queries
+      .map((item) => item.q)
+      .join(", ");
+
+    // Generate titles for the product
+    const body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming =
+      {
         model: "gpt-4o-mini", // gpt-4o-mini gpt-3.5-turbo
         messages: [
           {
@@ -177,19 +123,94 @@ function App() {
             content: `10 títulos, palabras claves: ${values}. Ejemplos de títulos de ese producto o similares: ${examples}`,
           },
         ],
-      });
-      console.log("key words: ", values);
-      console.log("gpt response: ", completion.choices[0].message);
-      setResponse(completion.choices[0].message.content);
+      };
+
+    try {
+      // Generate
+      const response = await gptQuery(body);
+      setResponse(response.message);
       setStatus("success");
     } catch (error) {
-      console.log(error);
+      console.error("Error in gptQuery: ", error);
       setStatus("error");
     }
-  }
+  };
 
-  const handleSuggestTitles = () => {
-    if (dataSuggestions && dataSearch) askGpt(dataSuggestions, dataSearch);
+  const onSubmitConsult: SubmitHandler<TermFormData> = async (formData) => {
+    if (!formData.message) return;
+    console.log("consulting term...");
+    mutateSuggestions(formData.message);
+    mutateSearch(formData.message);
+    form.reset();
+  };
+
+  const onSubmitGenerate: SubmitHandler<ImageFormData> = async (formData) => {
+    if (!formData.url) return;
+    console.log("generating description/keywords...");
+    setImageStatus("loading");
+
+    // set image url to display the product image preview
+    setUrl(formData.url);
+
+    // Create body for keywords and description
+    const bodyKeywords: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming =
+      {
+        model: "gpt-4o-mini", // gpt-4o-mini gpt-3.5-turbo
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Cree una lista de palabras clave relevantes para un producto, suponiendo que el objetivo sea mejorar la visibilidad en las búsquedas y atraer tráfico a plataformas de comercio electrónico como eBay, Amazon y MercadoLibre. Proporcione una lista completa de palabras clave, separadas por comas, que describan con precisión el producto y sus características. Tenga en cuenta factores como la categoría del producto, las descripciones y el público objetivo. responde me directamente con el listado de palabras clave.",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: formData.url,
+                },
+              },
+            ],
+          },
+        ],
+      };
+    const bodyDescription: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming =
+      {
+        model: "gpt-4o-mini", // gpt-4o-mini gpt-3.5-turbo
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Genera una descripción para el siguiente producto, para ser utilizada en plataformas de e-commerce como eBay, Amazon y MercadoLibre",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: formData.url,
+                },
+              },
+            ],
+          },
+        ],
+      };
+
+    try {
+      // Generate
+      const [keywordsResponse, descriptionResponse] = await Promise.all([
+        gptQuery(bodyKeywords),
+        gptQuery(bodyDescription),
+      ]);
+
+      // Set responses
+      setImageKeywordsResponse(keywordsResponse.message);
+      setImageDescriptionResponse(descriptionResponse.message);
+      setImageStatus("success");
+    } catch (error) {
+      console.error("Error in gptQuery: ", error);
+      setImageStatus("error");
+    }
   };
 
   return (
@@ -198,21 +219,21 @@ function App() {
       <h1 className="text-2xl text-center py-2 font-bold">
         Vendedores Mercadolibre Pro
         <span className="text-xs block font-light">
-          Generador de títulos y descripciones de productos
+          Generador palabras claves de productos
         </span>
       </h1>
       <div className="w-full max-w-md mx-auto space-y-4">
         <Tabs defaultValue="account" className="w-full">
           <TabsList className="w-full">
             <TabsTrigger value="account">Títulos Productos</TabsTrigger>
-            <TabsTrigger value="password">Descripciones Productos</TabsTrigger>
+            <TabsTrigger value="password">Imagen Producto</TabsTrigger>
           </TabsList>
           <TabsContent value="account">
             <div className="space-y-4">
               {/* term form */}
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit(onSubmit)}
+                  onSubmit={form.handleSubmit(onSubmitConsult)}
                   className="space-y-5 pb-2"
                 >
                   <FormField
@@ -235,9 +256,7 @@ function App() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="uppercase">
-                    Consultar
-                  </Button>
+                  <Button type="submit">Consultar</Button>
                 </form>
               </Form>
 
@@ -290,12 +309,11 @@ function App() {
                   </CardDescription>
                   {/* Button Suggest Titles */}
                   <Button
-                    className="uppercase"
                     type="button"
                     onClick={handleSuggestTitles}
                     // disabled={!dataSuggestions && !dataSearch}
                   >
-                    Generar Sugerencias de Títulos
+                    Generar
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -319,62 +337,82 @@ function App() {
             </div>
           </TabsContent>
           <TabsContent value="password">
-            {/* Generate Description Form */}
-            <Form {...descriptionForm}>
-              <form
-                onSubmit={descriptionForm.handleSubmit(
-                  handleGenerateDescription
-                )}
-                className="space-y-5 pb-2"
-              >
-                <FormField
-                  control={descriptionForm.control}
-                  name="url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>URL imagen del Producto</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="URL imagen del producto..."
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Genera una descripción para el producto.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="uppercase">
-                  Generar Descripción
-                </Button>
-              </form>
-            </Form>
+            <div className="space-y-4">
+              {/* Generate Image Form */}
+              <Form {...imageForm}>
+                <form
+                  onSubmit={imageForm.handleSubmit(onSubmitGenerate)}
+                  className="space-y-5 pb-2"
+                >
+                  <FormField
+                    control={imageForm.control}
+                    name="url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL imagen del Producto</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="URL imagen del producto..."
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Genera Keywords y Descripción sobre el Producto.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit">Generar</Button>
+                </form>
+              </Form>
 
-            {/* Image */}
-            <div className="flex justify-center">
-              {url && <img src={url} alt="product" className="w-1/3" />}
+              {/* Image */}
+              <div className="flex justify-center">
+                {url && <img src={url} alt="product" className="w-28" />}
+              </div>
+
+              {imageStatus === "loading" && <p>Cargando...</p>}
+              {imageStatus === "error" && <p>Error...</p>}
+              {imageStatus === "success" &&
+                imageKeywordsResponse &&
+                imageDescriptionResponse && (
+                  <>
+                    {/* Generate Keywords card */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Palabras Claves Generadas</CardTitle>
+                        <CardDescription>
+                          Estas son las keywords generadas por IA para el
+                          producto.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <p>{imageKeywordsResponse}</p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Generate Description card */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Descripción de Producto Generada</CardTitle>
+                        <CardDescription>
+                          Esta es la descripción generada por IA para el
+                          producto.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Markdown
+                          remarkPlugins={[remarkGfm]}
+                          className="space-y-4"
+                        >
+                          {imageDescriptionResponse}
+                        </Markdown>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
             </div>
-
-            {/* Generate Description card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Descripción de Producto Generada</CardTitle>
-                <CardDescription>
-                  Esta es la descripción generada por IA para el producto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {descriptionStatus === "loading" && <p>Cargando...</p>}
-                {descriptionStatus === "error" && <p>Error...</p>}
-                {descriptionStatus === "success" && descriptionResponse && (
-                  <Markdown remarkPlugins={[remarkGfm]} className="space-y-4">
-                    {descriptionResponse}
-                  </Markdown>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>
