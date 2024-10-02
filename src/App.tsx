@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageFormData, TermFormData } from "@/types";
 import { gptQuery } from "@/utils/gptQuery";
@@ -56,13 +57,17 @@ function App() {
   >("success");
 
   // Get Suggestions by term Query
-  const { data: dataSuggestions, mutate: mutateSuggestions } = useMutation({
+  const {
+    data: dataSuggestions,
+    mutate: mutateSuggestions,
+    mutateAsync: mutateAsyncSuggestions,
+  } = useMutation({
     mutationFn: getSuggestions,
     onError: (error) => {
       console.error("Error:", error);
     },
     onSuccess: (data) => {
-      console.log("getSuggestions Success");
+      console.log("getSuggestions Success", data);
       if (!data) return;
       // doing something when get suggestions
     },
@@ -203,8 +208,30 @@ function App() {
         gptQuery(bodyDescription),
       ]);
 
+      if (!keywordsResponse && !descriptionResponse) return;
+      if (!keywordsResponse.message) return;
+      if (!descriptionResponse.message) return;
+
+      // map keywords response to array
+      const keywordsResponseArr = keywordsResponse.message.split(", ");
+      console.log({ keywordsResponseArr });
+
+      const keywords = [];
+
+      for (const keyword of keywordsResponseArr) {
+        const message = keyword.trim().replace(/[.,-]/g, "");
+        const k = await mutateAsyncSuggestions(message);
+        if (!k) continue;
+        if (!k.suggested_queries) continue;
+        if (k.suggested_queries.length === 0) continue;
+        keywords.push(message);
+        k.suggested_queries.forEach((suggested_query) => {
+          keywords.push(suggested_query.q);
+        });
+      }
+
       // Set responses
-      setImageKeywordsResponse(keywordsResponse.message);
+      setImageKeywordsResponse([...new Set(keywords)].join(", "));
       setImageDescriptionResponse(descriptionResponse.message);
       setImageStatus("success");
     } catch (error) {
@@ -217,16 +244,20 @@ function App() {
     <main className="p-4">
       {/* Title */}
       <h1 className="text-2xl text-center py-2 font-bold">
-        Vendedores Mercadolibre Pro
+        Mercado<span className="text-[#FFCF00]">Pro</span> 
         <span className="text-xs block font-light">
           Generador palabras claves de productos
         </span>
       </h1>
       <div className="w-full max-w-md mx-auto space-y-4">
         <Tabs defaultValue="account" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="account">Títulos Productos</TabsTrigger>
-            <TabsTrigger value="password">Imagen Producto</TabsTrigger>
+          <TabsList className="w-full flex flex-row">
+            <TabsTrigger value="account" className="flex-1">
+              Por Termino
+            </TabsTrigger>
+            <TabsTrigger value="password" className="flex-1">
+              Por Imagen
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="account">
             <div className="space-y-4">
@@ -337,7 +368,7 @@ function App() {
             </div>
           </TabsContent>
           <TabsContent value="password">
-            <div className="space-y-4">
+            <div className="space-y-2">
               {/* Generate Image Form */}
               <Form {...imageForm}>
                 <form
@@ -372,7 +403,15 @@ function App() {
                 {url && <img src={url} alt="product" className="w-28" />}
               </div>
 
-              {imageStatus === "loading" && <p>Cargando...</p>}
+              {imageStatus === "loading" && (
+                <div className="flex flex-col space-y-3">
+                  <Skeleton className="h-[120px] w-full rounded-xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </div>
+              )}
               {imageStatus === "error" && <p>Error...</p>}
               {imageStatus === "success" &&
                 imageKeywordsResponse &&
