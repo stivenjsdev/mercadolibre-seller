@@ -219,7 +219,7 @@ function App() {
       const keywords = [];
 
       for (const keyword of keywordsResponseArr) {
-        const message = keyword.trim().replace(/[.,-]/g, "");
+        const message = keyword.trim().replace(/[.,-]/g, "").toLowerCase();
         const k = await mutateAsyncSuggestions(message);
         if (!k) continue;
         if (!k.suggested_queries) continue;
@@ -246,7 +246,7 @@ function App() {
       <h1 className="text-2xl text-center py-2 font-bold">
         Mercado<span className="text-[#FFCF00]">Pro</span> 
         <span className="text-xs block font-light">
-          Generador palabras claves de productos
+          Generador palabras claves de productos por: Sergio Jimenez
         </span>
       </h1>
       <div className="w-full max-w-md mx-auto space-y-4">
